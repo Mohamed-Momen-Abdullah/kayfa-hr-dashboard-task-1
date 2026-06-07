@@ -9,8 +9,32 @@ st.set_page_config(page_title="Week #1 Task: HR Attrition Analytics", layout="wi
 
 
 # This natively pins the logo to the top-left of the sidebar, above the navigation
-st.logo("kayfa_logo_light.png")
+# 1. Add the high-res image (Streamlit natively puts this at the bottom)
+st.sidebar.image("kayfa_logo_light.png", use_container_width=True)
 
+# 2. Rip it from the bottom and pin it to the absolute top
+st.markdown(
+    """
+    <style>
+        /* Yank the custom user content (the logo) out of the layout flow and pin it to the top */
+        [data-testid="stSidebarUserContent"] {
+            position: absolute !important;
+            top: 2rem !important; /* Leaves room for the sidebar collapse button */
+            left: 0px !important;
+            width: 100% !important;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+            z-index: 999 !important;
+        }
+        
+        /* Push the native navigation menu down to make room for the newly pinned logo */
+        [data-testid="stSidebarNav"] {
+            padding-top: 7rem !important; 
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # CSS Injection for the Sky Blue Gradient Header & Transparent Top Bar
 st.markdown("""
 <style>
