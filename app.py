@@ -37,7 +37,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Safe Logo Loader (Prioritizing Light Theme Logo)
-def display_logo(width_px=250):
+def display_logo(width_px=300):
     logo_path = "kayfa_logo_light.png"
     if os.path.exists(logo_path):
         # We use standard width to avoid the deprecation warnings
@@ -62,7 +62,8 @@ df['attrition_numeric'] = (df['attrition_label'] == 'Left').astype(int)
 # 3. Transform company_tenure from months to years
 df['company_tenure_years'] = df['company_tenure'] / 12
 
-color_map = {"Stayed": "#3b82f6", "Left": "#ef4444"}
+# Corporate Muted Palette
+color_map = {"Stayed": "#4B7FA1", "Left": "#D56D58"} # Steel Blue and Muted Terracotta
 
 # --- 3. DEFINE MULTIPAGE FUNCTIONS ---
 
@@ -71,22 +72,51 @@ def page_main_dashboard():
     with col_text:
         st.title("Week #1 Task: Systemic Culture & Employee Attrition")
     with col_logo:
-        st.image("kayfa_logo_light.png", width=250) 
+        st.image("kayfa_logo_light.png", width=300) 
     st.markdown("An interactive exploratory analysis identifying the root causes behind our current turnover crisis.")
     st.divider()
 
-    # Executive KPIs
+    # --- Executive KPIs (Upgraded 2-Row Layout) ---
+    st.markdown("### Executive Summary")
+    
+    # Row 1: The Basics
     c1, c2, c3 = st.columns(3)
     total_employees = len(df)
-    attrition_rate = (len(df[df['attrition_label'] == 'Left']) / total_employees) * 100
+    attrition_rate = df['attrition_numeric'].mean() * 100
+    avg_tenure = df['company_tenure_years'].mean()
     
     c1.metric("Total Workforce Analyzed", f"{total_employees:,}")
     c2.metric("Overall Attrition Rate", f"{attrition_rate:.1f}%")
+    c3.metric("Average Tenure", f"{avg_tenure:.1f} Yrs")
     
-    # UPDATE THIS LINE to use the new column and 'Yrs'
-    c3.metric("Average Tenure", f"{df['company_tenure_years'].mean():.1f} Yrs")
+    st.markdown("<br>", unsafe_allow_html=True) # Adds a little breathing room between rows
+    
+    # Row 2: The Business Impact
+    c4, c5, c6 = st.columns(3)
+    
+    # Calculate High Performer Attrition
+    high_perf_attrition = df[df['performance_rating'] == 'High']['attrition_numeric'].mean() * 100
+    
+    # Calculate Financial Bleed (Monthly Income * 12 for everyone who left)
+    lost_payroll = (df[df['attrition_label'] == 'Left']['monthly_income'] * 12).sum()
+    
+    # Helper function to format massive numbers beautifully (e.g., $3.20B instead of $3,200,000,000)
+    def format_currency(num):
+        if num >= 1_000_000_000:
+            return f"${num/1_000_000_000:.2f}B"
+        elif num >= 1_000_000:
+            return f"${num/1_000_000:.2f}M"
+        else:
+            return f"${num:,.0f}"
+
+    # Calculate Critical Risk Count (From Q9)
+    risk_count = len(df[(df['work_life_balance'] == 'Poor') & (df['overtime'] == 'Yes') & (df['job_satisfaction'] == 'Low')])
+
+    c4.metric("High-Performer Flight Rate", f"{high_perf_attrition:.1f}%", "Losing top-tier talent", delta_color="off")
+    c5.metric("Annual Payroll Lost", format_currency(lost_payroll), "Capital walking out the door", delta_color="off")
+    c6.metric("Critical Risk Employees", f"{risk_count:,}", "Immediate intervention required", delta_color="off")
+    
     st.divider()
-    
     # Split related insights into tabs
     tab1, tab2, tab3 = st.tabs(["📊 1. The Crisis Overview", "💸 2. Busting Compensation Myths", "🤝 3. The Cultural Drivers"])
 
@@ -221,7 +251,7 @@ def page_q2():
         fig_rate = px.bar(ot_rate, x='overtime', y='Attrition Rate', color='overtime',
                           title="Attrition Rate: Overtime vs. No Overtime",
                           labels={'overtime': 'Works Overtime', 'Attrition Rate': 'Turnover Rate (%)'},
-                          color_discrete_sequence=["#3b82f6", "#ef4444"])
+                          color_discrete_sequence=["#D56D58", "#6B9080"])
         fig_rate.update_traces(texttemplate='%{y:.1f}%', textposition='outside')
         st.plotly_chart(fig_rate, width="stretch")
 
@@ -258,7 +288,7 @@ def page_q3():
         fig_rw_rate = px.bar(rw_rate, x='remote_work', y='Attrition Rate', color='remote_work',
                              title="Attrition Rate: Remote vs. On-Site",
                              labels={'remote_work': 'Remote Work Allowed', 'Attrition Rate': 'Turnover Rate (%)'},
-                             color_discrete_sequence=["#ef4444", "#22c55e"]) 
+                             color_discrete_sequence=["#D56D58", "#6B9080"]) 
         fig_rw_rate.update_traces(texttemplate='%{y:.1f}%', textposition='outside')
         st.plotly_chart(fig_rw_rate, width="stretch")
 
@@ -412,7 +442,7 @@ def page_q8():
         fig_prom = px.bar(q8_prom, x='number_of_promotions', y='Attrition Rate (%)',
                           title="Attrition by Number of Promotions",
                           labels={'number_of_promotions': 'Total Promotions', 'Attrition Rate (%)': 'Turnover Rate (%)'},
-                          color='Attrition Rate (%)', color_continuous_scale="Reds")
+                          color='Attrition Rate (%)', color_continuous_scale="OrRd")
         fig_prom.update_layout(coloraxis_showscale=False)
         st.plotly_chart(fig_prom, width="stretch")
         
@@ -506,24 +536,66 @@ def page_q10():
     </div>
     """, unsafe_allow_html=True)
 
-# --- 4. RENDER NATIVE MULTIPAGE NAVIGATION ---
-pages = {
-    "Executive Overview": [
-        st.Page(page_main_dashboard, title="Main Dashboard", icon="📊")
-    ],
-    "10 Business Questions": [
-        st.Page(page_q1, title="Question 1", icon="1️⃣"),
-        st.Page(page_q2, title="Question 2", icon="2️⃣"),
-        st.Page(page_q3, title="Question 3", icon="3️⃣"),
-        st.Page(page_q4, title="Question 4", icon="4️⃣"),
-        st.Page(page_q5, title="Question 5", icon="5️⃣"),
-        st.Page(page_q6, title="Question 6", icon="6️⃣"),
-        st.Page(page_q7, title="Question 7", icon="7️⃣"),
-        st.Page(page_q8, title="Question 8", icon="8️⃣"),
-        st.Page(page_q9, title="Question 9", icon="9️⃣"),
-        st.Page(page_q10, title="Question 10", icon="🔟")
-    ]
-}
+def page_summary():
+    st.title("📝 Executive Summary & Action Plan")
+    st.markdown("A high-level synthesis of the attrition crisis, the core drivers, and strategic next steps.")
+    
+    st.divider()
 
-pg = st.navigation(pages)
+    # --- Section 1: The Core Problem ---
+    st.header("1. The State of the Workforce")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Overall Attrition", f"{df['attrition_numeric'].mean() * 100:.1f}%", "Critical Level", delta_color="inverse")
+    c2.metric("Peak Flight Risk", "Years 1 - 4", "Mid-career exodus")
+    c3.metric("Annual Payroll Lost", f"${(df[df['attrition_label'] == 'Left']['monthly_income'] * 12).sum() / 1_000_000:.1f}M", "Capital Drain", delta_color="inverse")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Section 2: Key Drivers ---
+    st.header("2. The Primary Drivers of Turnover")
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        st.info("**⏳ The Overtime Crisis**\n\nEmployees working overtime are abandoning the company at significantly higher rates. However, baseline hours also yield high turnover, indicating standard workloads are unmanageable.")
+        st.warning("**🚧 Career Stagnation**\n\nLack of upward mobility is a massive accelerant. Employees with zero promotions or lacking leadership opportunities are seeking growth externally.")
+        
+    with col_b:
+        st.success("**🏠 The Remote Anchor**\n\nRemote work acts as our strongest retention tool. Remote employees have less than half the turnover rate of their on-site counterparts.")
+        st.error("**⚠️ The 'Perfect Storm'**\n\nThe most lethal combination for retention is an employee experiencing **Low Job Satisfaction**, **Poor Work-Life Balance**, and working **Overtime**. This profile quits at astronomical rates.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Section 3: Strategic Action Plan ---
+    st.header("3. Recommended Action Plan")
+    
+    st.markdown("""
+    Based on the mathematical realities of the dataset, HR and Leadership must prioritize the following initiatives next quarter:
+    
+    *   **Phase 1 (Immediate): Halt the 'Perfect Storm' Bleed.** HR must immediately pull the roster of employees currently matching the high-risk profile (Overtime + Poor WLB + Low Satisfaction) and mandate workload reductions or PTO.
+    *   **Phase 2 (Short-Term): Mid-Career Interventions.** Shift retention resources away from initial onboarding and target employees approaching the 1-to-4 year tenure mark with proactive check-ins and lateral mobility opportunities.
+    *   **Phase 3 (Long-Term): Remote Pilot Expansion.** Launch a controlled pilot program expanding remote or hybrid options to high-flight-risk on-site departments to test if the retention benefit scales company-wide.
+    """)
+
+# --- 4. RENDER NATIVE MULTIPAGE NAVIGATION ---
+
+pg = st.navigation(
+    {
+        "Executive Overview": [
+            st.Page(page_main_dashboard, title="Main Dashboard", icon="📊"),
+            st.Page(page_summary, title="Executive Summary", icon="📝") # Added right here!
+        ],
+        "10 Business Questions": [
+            st.Page(page_q1, title="Question 1", icon="1️⃣"),
+            st.Page(page_q2, title="Question 2", icon="2️⃣"),
+            st.Page(page_q3, title="Question 3", icon="3️⃣"),
+            st.Page(page_q4, title="Question 4", icon="4️⃣"),
+            st.Page(page_q5, title="Question 5", icon="5️⃣"),
+            st.Page(page_q6, title="Question 6", icon="6️⃣"),
+            st.Page(page_q7, title="Question 7", icon="7️⃣"),
+            st.Page(page_q8, title="Question 8", icon="8️⃣"),
+            st.Page(page_q9, title="Question 9", icon="9️⃣"),
+            st.Page(page_q10, title="Question 10", icon="🔟")
+        ]
+    }
+)
 pg.run()
